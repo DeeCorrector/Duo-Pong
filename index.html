@@ -18,42 +18,58 @@
 <script type="text/javascript">
 	// Sets screen animation to 60 fps to ensure smooth animations.
 	window.requestAnimFrame = (function(){
-		return  window.requestAnimationFrame   || 
-			window.webkitRequestAnimationFrame || 
-			window.mozRequestAnimationFrame    || 
-			window.oRequestAnimationFrame      || 
-			window.msRequestAnimationFrame     ||  
+		return  window.requestAnimationFrame 	|| 
+			window.webkitRequestAnimationFrame 	|| 
+			window.mozRequestAnimationFrame 	|| 
+			window.oRequestAnimationFrame 		|| 
+			window.msRequestAnimationFrame 		||  
 			function( callback ){
 				return window.setTimeout(callback, 1000 / 60);
 			};
 	})();
 
-	var canvas = document.getElementById("canvas");
-	var ctx = canvas.getContext("2d");
-	var w = window.innerWidth;
-	var h = window.innerHeight;
+	// Stop animating when game has ended.
+	window.cancelRequestAnimFrame = ( function() {
+	return window.cancelAnimationFrame 				||
+		window.webkitCancelRequestAnimationFrame 	||
+		window.mozCancelRequestAnimationFrame 		||
+		window.oCancelRequestAnimationFrame 		||
+		window.msCancelRequestAnimationFrame 		||
+		clearTimeout
+	} )();
+
+	var canvas = document.getElementById("canvas"),
+		ctx = canvas.getContext("2d"),
+		w = window.innerWidth,
+		h = window.innerHeight,
+		ball = {},
+		mouse = {},
+		my_score = 0,
+		enemy_score = 0,
+		fps = 60,
+		init;
 
 	canvas.width = w;
 	canvas.height = h;
 
-	// Fills canvas' background
+	// Fills canvas' background.
 	function paintCanvas() {
 		ctx.fillStyle = "black";
 		ctx.fillRect(0,0,w,h);
 	}
 
-	// Defines drawing of the single frame of the game
+	// Defines drawing of the single frame of the game.
 	function draw() {
 		paintCanvas();
 	}
 
-	// Loop, that keeps repeating during the game to keep animation running
+	// Loop, that keeps repeating during the game to keep animation running.
 	function animationLoop() {
 		init = requestAnimFrame(animationLoop);
 		draw();
 	}
 
-	// Action, that starts the game
+	// Action, that starts the game.
 	function startGame() {
 		animationLoop();
 	}
