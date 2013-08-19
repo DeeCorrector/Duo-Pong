@@ -4,12 +4,28 @@
 <head>
 	<title>Duo-Pong</title>
 	<meta name="author" content="Dmitrii Cucleschin / Nikolce Kolev">
-	<meta description="A game of ping-pong, played on shared screen of two computers. Made as CS Club demo for Jacobs University Club fair by Dmitrii Cucleschin and Nikolce Kolev.">
+	<meta description="A game of ping-pong, played on shared screen of two computers. Made as CS Club demo for Jacobs University Club Fair by Dmitrii Cucleschin and Nikolce Kolev.">
 	<meta name="keywords" content="ping-pong, ping, pong, javascript, demo, dual, two-player, automatic, game">
+	<style>
+		body {padding: 0; margin: 0; overflow: hidden;}
+	</style>
 </head>
 
 <body>
 	<canvas id="canvas"></canvas>
 </body>
 
+<script type="text/javascript">
+	var canvas = document.getElementById("canvas");
+	var ctx = canvas.getContext("2d");
+	var w = window.innerWidth;
+	var h = window.innerHeight;
+
+	canvas.width = w;
+	canvas.height = h;
+
+	ctx.fillStyle = "black";
+	ctx.fillRect(0,0,w,h);
+
+</script>
 </html>
