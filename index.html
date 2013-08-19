@@ -43,6 +43,7 @@
 		ctx = canvas.getContext("2d"),
 		width = window.innerWidth,
 		height = window.innerHeight,
+		player_type = "right",
 		ball = {},
 		paddle = {},
 		mouse = {},
@@ -80,8 +81,7 @@
 
 	  	this.h = 200;
 		this.w = 20;
-		this.pos = "right"; // Need to assign based on player type!
-		this.x = (this.pos === "left") ? offset : (width - this.w - offset);
+		this.x = (player_type === "left") ? offset : (width - this.w - offset);
 		this.y = height/2 - this.h/2;
 		this.color = "white";
 
