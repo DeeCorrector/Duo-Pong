@@ -11,27 +11,30 @@ function random(min,max) {
 }
 
 var ball = {
-	x: 30, // Keep x and y in global, decode on client.
+  x: 30, // Keep x and y in global, decode on client.
 	y: 30,
 	r: 15,
 	color: "white",
-	vx: 8,
-	vy: 4
+	vx: 10,
+  vy: 5
 };
 
+var player_count = 0;
 var players = {};
-
 var stage = {};
+var score = {};
 
 io.sockets.on('connection', function(socket){
 
   socket.on('init', function (info) {
     info.socket = socket;
     players[socket.id] = info;
+    score[socket.id] = 0;
     updateStage();
 
     socket.emit('init', {
-      ball: ball
+      ball: ball,
+      id: socket.id
     });
   });
 
@@ -50,6 +53,22 @@ io.sockets.on('connection', function(socket){
       ball.vy = -ball.vy;
     }
 
+    io.sockets.emit('updateBall', ball);
+  });
+
+  socket.on('didScore', function(data) {
+    ball = data.ball;
+
+    ball.x = 30;//stage.width/2 - ball.r;
+    ball.y = 30;//stage.height/2 - ball.r;
+
+    for (var key in score) {
+      if (key !== socket.id) {
+        score[key]++;
+      }
+    }
+
+    io.sockets.emit('updateScore', score);
     io.sockets.emit('updateBall', ball);
   });
 

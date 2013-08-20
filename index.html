@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Duo-Pong</title>
-	<meta name="author" content="Dmitrii Cucleschin / Nikolce Kolev / Stefan Mirea">
-	<meta description="A game of ping-pong, played on shared screen of two computers. Made as CS Club demo for Jacobs University Club Fair by Dmitrii Cucleschin, Nikolce Kolev and Stefan Mirea.">
+    <title>Duo-Pong</title>
+	<meta name="author" content="Dmitrii Cucleschin / Stefan Mirea">
+	<meta description="A game of ping-pong, played on shared screen of two computers. Made as CS Club demo for Jacobs University Club Fair by Dmitrii Cucleschin and Stefan Mirea.">
 	<meta name="keywords" content="ping-pong, ping, pong, javascript, demo, dual, two-player, automatic, game">
 	<style>
 		body {padding: 0; margin: 0; overflow: hidden;}
@@ -16,7 +16,7 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script type="text/javascript">
-  var socket = io.connect('http://localhost');
+  var socket = io.connect('192.168.0.101');
 
   var stage = {
   	width: window.innerWidth || document.documentElement.clientWidth,
@@ -29,6 +29,7 @@
 
   handler('init', startGame);
   handler('updateBall', updateBall);
+  handler('updateScore', updateScore);
   handler('setStage', setStage);
 
   /**
@@ -70,7 +71,6 @@
 	var ctx = canvas.getContext("2d");
 	var width = window.innerWidth;
 	var height = window.innerHeight;
-	var player_type = null;
 	var ball = {
 		x: 0,
 		y: 0,
@@ -89,12 +89,24 @@
 			ctx.fill();
 		}
 	};
+	var score = {
+		x: width/2 - 50,
+		y: 50,
+		color: "white",
+		value: 0,
+
+		draw: function() {
+			ctx.fillStyle = this.color;
+			ctx.font = "36px Arial, sans-serif";
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillText(score.value, this.x, this.y);
+		}
+	};
 	var mouse = {x:0, y:0};
-	var my_score = 0;
-	var enemy_score = 0;
-	var fps = 60;
 	var paddle_offset = 5;
 	var init;
+	var id;
 
 	// Make canvas equal to screen dimensions and set listeners.
 	canvas.width = width;
@@ -124,6 +136,10 @@
 		for (var key in b) {
 		  ball[key] = b[key];
 		}
+	}
+
+	function updateScore(s) {
+		score.value = s[id];
 	}
 
 	// Sets stage (aka. defines the screen in global coordinate system)
@@ -170,20 +186,23 @@
 		ball.y += ball.vy;
 
 		// Detect collisions!
-		if (ball.x < 0 || ball.x > stage.width) {
-			console.log("Missed it!!! :(");
-			cancelRequestAnimFrame(init);
-			// Give point, restart the game.
-		}
+		var localCoord = convertToLocal(ball.x,ball.y);
 
-		if (intersects(ball,paddle)) {
-			console.log("Collision with paddle: ", paddle);
-			didCollide(ball,"paddle");
-		}
+		if (localCoord.x >= -ball.vx && localCoord.x <= width+ball.vx) {
+			if (ball.x < 0 || ball.x > stage.width) {
+				console.log("Goal! Changing score and restarting...");
+				didScore(ball);
+			}
 
-		if (ball.y < 0 || ball.y > stage.height) {
-			console.log("Collision with top/bottom");
-			didCollide(ball,"horizontal");
+			if (intersects(ball,paddle)) {
+				console.log("Collision with paddle: ", paddle);
+				didCollide(ball,"paddle");
+			}
+
+			if (ball.y < 0 || ball.y > stage.height) {
+				console.log("Collision with top/bottom");
+				didCollide(ball,"horizontal");
+			}
 		}
 	}
 
@@ -217,6 +236,10 @@
 		});
 	}
 
+	function didScore(ball) {
+		socket.emit('didScore', {ball: ball});
+	}
+
 	// Update current mouse coordinates.
 	function mouseMoved(e) {
 		mouse.x = e.pageX;
@@ -229,6 +252,7 @@
 
 		ball.draw();
 		paddle.draw();
+		score.draw();
 
 		update();
 	}
@@ -246,6 +270,7 @@
 			return;
 		}
 
+		id = initData.id;
 		updateBall(initData.ball);
 		animationLoop();
 	}
