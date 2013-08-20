@@ -11,8 +11,8 @@ function random(min,max) {
 }
 
 var ball = {
-	x: 0, // Keep x and y in global, decode on client.
-	y: 0,
+	x: 30, // Keep x and y in global, decode on client.
+	y: 30,
 	r: 15,
 	color: "white",
 	vx: 8,

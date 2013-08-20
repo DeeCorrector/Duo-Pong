@@ -105,8 +105,10 @@
 	var paddle = new (function () {
   		this.h = 200;
 		this.w = 20;
+
+		// In global coordinate system. X defaults to left paddle, will be changed in setStage() in case if more than 1 player joins.
+		// TODO: If just one player, draw both paddles to control with mouse simultaneously.
 		this.x = paddle_offset; 
-		// Defaults to left, will be changed in setStage();
 		this.y = height/2 - this.h/2;
 		this.color = "white";
 
@@ -124,6 +126,7 @@
 		}
 	}
 
+	// Sets stage (aka. defines the screen in global coordinate system)
 	function setStage (data) {
 		stage = data;
 
@@ -133,6 +136,7 @@
 		console.log("Stage: ",stage);
 	}
 
+	// Converts from local coordinates to global ones.
 	function convertToGlobal (x, y) {
 		return {
 			x: stage.x + x,
@@ -140,6 +144,7 @@
 		};
 	}
 
+	// Converts from global coordinates to local ones.
 	function convertToLocal (x, y) {
 		return {
 			x: x - stage.x,
@@ -164,7 +169,7 @@
 		ball.x += ball.vx;
 		ball.y += ball.vy;
 
-		// Need to test on two players, since on one we're limited to coordinates of one screen
+		// Detect collisions!
 		if (ball.x < 0 || ball.x > stage.width) {
 			console.log("Missed it!!! :(");
 			cancelRequestAnimFrame(init);
