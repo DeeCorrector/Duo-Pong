@@ -18,13 +18,18 @@
 <script type="text/javascript">
   var socket = io.connect('http://localhost');
 
-  socket.emit('init', {
-  	screenWidth: window.innerWidth || document.documentElement.clientWidth,
-    screenHeight: window.innerHeight || document.documentElement.clientHeight
-  });
+  var stage = {
+  	width: window.innerWidth || document.documentElement.clientWidth,
+    height: window.innerHeight || document.documentElement.clientHeight,
+    x: 0,
+    y: 0
+  };
+
+  socket.emit('init', stage);
 
   handler('init', startGame);
   handler('updateBall', updateBall);
+  handler('setStage', setStage);
 
   /**
    * Register a global socket handler
@@ -77,7 +82,10 @@
 		draw: function() {
 			ctx.beginPath();
 			ctx.fillStyle = this.color;
-			ctx.arc(this.x, this.y, this.r, 0, Math.PI*2, false);
+
+			var localCoord = convertToLocal(this.x,this.y);
+			ctx.arc(localCoord.x, localCoord.y, this.r, 0, Math.PI*2, false);
+
 			ctx.fill();
 		}
 	};
@@ -85,6 +93,7 @@
 	var my_score = 0;
 	var enemy_score = 0;
 	var fps = 60;
+	var paddle_offset = 5;
 	var init;
 
 	// Make canvas equal to screen dimensions and set listeners.
@@ -94,17 +103,17 @@
 
 	// Define properties of the paddle.
 	var paddle = new (function () {
-		var offset = 5;
-
   		this.h = 200;
 		this.w = 20;
-		this.x = (player_type === "left") ? offset : (width - this.w - offset);
+		this.x = paddle_offset; 
+		// Defaults to left, will be changed in setStage();
 		this.y = height/2 - this.h/2;
 		this.color = "white";
 
 		this.draw = function() {
 			ctx.fillStyle = this.color;
-			ctx.fillRect(this.x,this.y,this.w,this.h);
+			var localCoord = convertToLocal(this.x,this.y);
+			ctx.fillRect(localCoord.x,localCoord.y,this.w,this.h);
 		};
 	})();
 
@@ -113,6 +122,29 @@
 		for (var key in b) {
 		  ball[key] = b[key];
 		}
+	}
+
+	function setStage (data) {
+		stage = data;
+
+		paddle.x = (stage.x == 0) ? paddle_offset : (stage.width - paddle.w - paddle_offset);
+		paddle.draw();
+
+		console.log("Stage: ",stage);
+	}
+
+	function convertToGlobal (x, y) {
+		return {
+			x: stage.x + x,
+			y: stage.y + y
+		};
+	}
+
+	function convertToLocal (x, y) {
+		return {
+			x: x - stage.x,
+			y: y - stage.y
+		};
 	}
 
 	// Fills canvas' background.
@@ -131,21 +163,26 @@
 		// Move ball according to current velocity
 		ball.x += ball.vx;
 		ball.y += ball.vy;
-		
-		if (ball.x < 0 || ball.x > width) {
-			console.log("Collision with left/right");
-			didCollide(ball,"vertical");
+
+		// Need to test on two players, since on one we're limited to coordinates of one screen
+		if (ball.x < 0 || ball.x > stage.width) {
+			console.log("Missed it!!! :(");
+			cancelRequestAnimFrame(init);
+			// Give point, restart the game.
 		}
-		else if (ball.y < 0 || ball.y > height) {
-			console.log("Collision with top/bottom");
-			didCollide(ball,"horizontal");
-		}
-		else if (intersects(ball,paddle)) {
+
+		if (intersects(ball,paddle)) {
 			console.log("Collision with paddle: ", paddle);
 			didCollide(ball,"paddle");
 		}
+
+		if (ball.y < 0 || ball.y > stage.height) {
+			console.log("Collision with top/bottom");
+			didCollide(ball,"horizontal");
+		}
 	}
 
+	// Checks if circle intersects a rectangle
 	function intersects(circle, rect) {
 		var circleDist = {x:0, y:0};
 		circleDist.x = Math.abs(circle.x - rect.x - rect.w/2);
@@ -167,6 +204,7 @@
 		return (cornerDist <= Math.pow(circle.r,2));
 	}
 
+	// Update server on the ball's status
 	function didCollide (ball, success) {
 		socket.emit('didCollide', {
 			success: success,
@@ -203,7 +241,6 @@
 			return;
 		}
 
-		player_type = initData.playerType;
 		updateBall(initData.ball);
 		animationLoop();
 	}

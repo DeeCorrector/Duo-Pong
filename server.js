@@ -11,12 +11,12 @@ function random(min,max) {
 }
 
 var ball = {
-	x: random(50,250),
-	y: random(50,250),
+	x: 0, // Keep x and y in global, decode on client.
+	y: 0,
 	r: 15,
 	color: "white",
-	vx: random(4,8),
-	vy: random(4,8)
+	vx: 8,
+	vy: 4
 };
 
 var players = {};
@@ -49,10 +49,6 @@ io.sockets.on('connection', function(socket){
     else if (data.success === "horizontal") {
       ball.vy = -ball.vy;
     }
-    else if (data.success === "vertical") {
-      // Just a placeholder: add a check if lost or went to different screen.
-      ball.vx = -ball.vx;
-    }
 
     io.sockets.emit('updateBall', ball);
   });
@@ -61,11 +57,28 @@ io.sockets.on('connection', function(socket){
 
 function updateStage () {
   stage.height = 69000;
+  stage.width = 0;
+
   for (var key in players) {
-    stage.width += players[key].screenWidth,
-    stage.height = Math.min(stage.height, players[key].screenHeight);
+    stage.width += players[key].width,
+    stage.height = Math.min(stage.height, players[key].height);
   }
-  io.sockets.emit('setStage', stage);
+  var prev = null;
+  for (var key in players) {
+    var s = {
+      width: stage.width,
+      height: stage.height
+    }
+    if (prev !== null) {
+      s.x = prev.x;
+      s.y = prev.y;
+    } else {
+      prev = {x:players[key].width, y:0};
+      s.x = 0;
+      s.y = 0;
+    }
+    players[key].socket.emit('setStage', s);
+  }
   // TODO: for n-gons we need to recalculate if the ball goes out of stage
   io.sockets.emit('updateBall', ball);
 }
