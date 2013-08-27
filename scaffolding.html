@@ -180,7 +180,7 @@
       x: 0,
       y: 0,
       angle: 0,
-      normalVisible: true,
+      normalVisible: false,
       get normal_angle () {
         return this.angle + Math.PI / 2;
       },
@@ -386,8 +386,6 @@
             // (new Circle({x:line.points[0].x, y:line.points[0].y, style:{fillStyle:'crimson'}, r:3})).draw(stage);
             // (new Circle({x:line.points[1].x, y:line.points[1].y, style:{fillStyle:'crimson'}, r:3})).draw(stage);
 
-            line.draw_normal(stage);
-
             intersections.push({
               line: line,
               intersection: p
@@ -417,6 +415,8 @@
           var line = data.line;
           var p = data.intersection.points[0];
           var refl_angle = 2 * line.angle - ray.angle;
+
+          this.draw_normal(stage, {x:p.x, y:p.y, angle:line.normal_angle});
 
           // Draw reflection ray.
           ctx.save();
