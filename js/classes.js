@@ -138,10 +138,17 @@ Stage.prototype = {
 };
 
 function Sprite (opt) {
+  // We need to redefine the super property so it binds to the right object.
+  Object.defineProperty(this, 'super', {
+    get: function () {
+      return this.__proto__.__proto__;
+    }
+  });
   // We need to re-define all object properties that are partially
-  // modified by the methods otherwise they will be globally modified
-  Object.keys(this.__proto__.__proto__).map(function (k) {
-    if (!this.hasOwnProperty(k) && typeof this[k] == 'object' && this[k].constructor == Object) {
+  // modified by the methods otherwise they will be globally modified.
+  Object.keys(this.super).map(function (k) {
+    if (!this.hasOwnProperty(k) && typeof this[k] == 'object' && this[k] !== null &&
+      this[k].constructor == Object) {
       this[k] = cloneObject(this[k]);
     }
   }.bind(this));
@@ -170,12 +177,41 @@ Sprite.prototype = {
   y: 0,
   angle: 0,
   normalVisible: false,
+
+  /**
+   * Get a reference to the super class.
+   */
+  get super () {
+    return this.__proto__.__proto__;
+  },
+
+  /**
+   * Angle + 90deg.
+   */
   get normal_angle () {
     return this.angle + Math.PI / 2;
   },
+
+  /**
+   * Get the minimum number of points to draw the Sprite.
+   * (e.g. for Rectangle is 2, for Circle is 1)
+   */
   get points () {
     return [new Point2D(this.x, this.y)];
   },
+
+  /**
+   * If defined as a method, when performing intersections this method will be
+   * used instead of the standard collision detection.
+   *
+   * When defining this method, one must usually filter between accepted types
+   * and throw if an imcompatible class is detected.
+   *
+   * @param {Sprite} object The object to check the intersection against.
+   * @return {Object} {status:'Intersection|Outside', points:[]}
+   */
+  intersect: null,
+
   /**
    * Every subclass must re-implement this method and call the super-class
    * for checks. This method does not actual do anything.
@@ -186,6 +222,7 @@ Sprite.prototype = {
       throw new Error('First argument is not an instance of Stage:', stage);
     }
   },
+
   /**
    * Draws the normal of the Sprite by default.
    * It can be used to draw any vector (any arrow) anywhere though :)
@@ -261,7 +298,7 @@ Rectangle.prototype = {
     ];
   },
   draw: function (stage) {
-    this.__proto__.__proto__.draw.call(this, stage);
+    this.super.draw.call(this, stage);
     var ctx = stage.context;
     ctx.save();
     ctx.beginPath();
@@ -283,7 +320,7 @@ Rectangle.prototype = {
       x: this.w / 2,
       y: this.h / 2
     };
-    this.__proto__.__proto__.draw_normal.call(this, stage, opt);
+    this.super.draw_normal.call(this, stage, opt);
   }
 };
 
@@ -296,17 +333,127 @@ function Circle (opt) {
 }
 Circle.prototype = {
   __proto__: Sprite.prototype,
-  r: 20,
-  angle: 0,
-  draw: function draw (stage) {
-    this.__proto__.__proto__.draw.call(this, stage);
+  radius: 20,
+  draw: function (stage) {
+    this.super.draw.call(this, stage);
     stage.context.save();
     stage.applyStyle(this.style);
     stage.context.beginPath();
-    stage.context.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    stage.context.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     stage.context.fill();
     stage.context.restore();
     return this;
+  }
+};
+
+/**
+ * Create a n-edged polygon.
+ * Configurable setters: edges
+ * @param {Object} opt {edges}
+ */
+function Polygon (opt) {
+  Sprite.call(this, opt);
+  // Initialize side effects.
+  this.edges = this.edges;
+}
+Polygon.prototype = {
+  __proto__: Sprite.prototype,
+  _radius: 150,
+  _edges: 6,
+  _corner_angle: null,
+  _edge_length: null,
+  _inner_radius: null,
+  // Will store all the Sprites that compose this element.
+  _sprites: [],
+
+  set radius (val) {
+    this._radius = val;
+    this._edge_length = Math.cos(this._corner_angle) * this.radius * 2;
+    this._inner_radius = Math.sqrt(this.radius*this.radius - this._edge_length*this._edge_length/4);
+  },
+  get radius () {
+    return this._radius;
+  },
+  set edges (val) {
+    this._edges = val;
+    this._corner_angle = Math.PI * 2 / this._edges;
+    this.radius = this.radius;
+    var angle = Math.PI * 3/2;
+    var start_angle = (Math.PI - this._corner_angle) / 4;
+    for (var i=0; i<this.edges; ++i) {
+      this._sprites.push(new Rectangle({
+          x: this.x + this.radius * Math.cos(angle + i * this._corner_angle),
+          y: this.y + this.radius * Math.sin(angle + i * this._corner_angle),
+          w: this._edge_length,
+          angle: start_angle,
+          style:this.style
+      }));
+      start_angle += this._corner_angle;
+    }
+  },
+  get edges () {
+    return this._edges;
+  },
+  intersect: function (elem) {
+    if (!elem) { throw new Error('Invalid Sprite:', elem); }
+    if (elem instanceof Ray) { return this.intersectRay(elem); }
+    throw new Error('Intersection with this element not implemented:', elem);
+  },
+  intersectRay: function (elem) {
+    var outer_intersection = Intersection.intersectCircleLine(
+      {x:this.x, y:this.y}, this._inner_radius,
+      elem.points[0], elem.points[1]
+    );
+    var inner_intersection = Intersection.intersectCircleLine(
+      {x:this.x, y:this.y}, this.radius,
+      elem.points[0], elem.points[1]
+    );
+    if (!outer_intersection.points.length && !inner_intersection.points.length) {
+      return {status:'Outside', points:[]};
+    }
+    var points = [];
+    for (var i=0; i<this._sprites.length; ++i) {
+      var insc = Intersection.intersectLineLine(
+        elem.points[0],
+        elem.points[1],
+        this._sprites[i].points[0],
+        this._sprites[i].points[1]
+      );
+      if (insc.points.length === 0) { continue; }
+      for (var j=0; j<insc.points.length; ++j) {
+        points.push(insc.points[j]);
+      }
+    }
+    return {
+      status: points.length === 0 ? 'Outside' : 'Intersection',
+      points: points
+    };
+  },
+  draw: function (stage) {
+    this.super.draw.call(this, stage);
+    for (var i=0; i<this._sprites.length; ++i) {
+      this._sprites[i].draw(stage);
+    }
+    // var ctx = stage.context;
+    // ctx.save();
+    // stage.applyStyle(this.style);
+    // ctx.arc(this.x, this.y, 10, 0, Math.PI * 2);
+    // ctx.fill();
+    // ctx.restore();
+    // ctx.translate(this.x, this.y);
+    // ctx.rotate(this.angle);
+    // ctx.translate(0, -this.radius);
+    // ctx.rotate(this._corner_angle / 2);
+    // ctx.beginPath();
+    // for (var i=0; i<this.sprites.length; ++i) {
+    //   ctx.moveTo(0, 0);
+    //   ctx.lineTo(this._edge_length, 0);
+    //   ctx.translate(this._edge_length, 0);
+    //   ctx.rotate(this._corner_angle);
+    // }
+    // ctx.stroke();
+    // ctx.closePath();
+    // ctx.restore();
   }
 };
 
@@ -319,24 +466,26 @@ function Ray (opt) {
 }
 Ray.prototype = {
   __proto__: Sprite.prototype,
-  r: 5,
+  radius: 5,
   max_reflections: 5,
   style: {
     fillStyle: '#FF0000',
   },
   draw: function (stage) {
-    this.__proto__.__proto__.draw.call(this, stage);
+    this.super.draw.call(this, stage);
     var ctx = stage.context;
 
     ctx.save();
     var get_ray = function (x, y, angle) {
       angle = angle % (Math.PI * 2);
+      var dx = Math.cos(angle);
+      var dy = Math.sin(angle);
       return {
-        x: x,
-        y: y,
-        angle: angle,
-        dx: Math.cos(angle),
-        dy: Math.sin(angle)
+        x:x, y:y, angle:angle, dx:dx, dy:dy,
+        points: [
+          new Point2D(x, y),
+          new Point2D(x + 9000 * dx, y + 9000 * dy),
+        ]
       };
     };
 
@@ -345,17 +494,22 @@ Ray.prototype = {
     for (var i=0; i<=this.max_reflections; ++i) {
       var intersections = [];
       for (var key in stage.sprites) {
-        var line = stage.sprites[key];
-        if (!(line instanceof Rectangle)) {
+        var elem = stage.sprites[key];
+        if (!(elem instanceof Rectangle || elem instanceof Polygon)) {
+          continue;
+        }
+        if (elem.intersect) {
+          intersections.push({
+            line: elem,
+            intersection: elem.intersectRay(ray)
+          });
           continue;
         }
         intersections.push({
-          line: line,
+          line: elem,
           intersection: Intersection.intersectLineLine(
-            new Point2D(ray.x, ray.y),
-            new Point2D(ray.x + 9000 * ray.dx, ray.y + 9000 * ray.dy),
-            line.points[0],
-            line.points[1]
+            ray.points[0], ray.points[1],
+            elem.points[0], elem.points[1]
           )
         });
       }
@@ -411,7 +565,7 @@ Ray.prototype = {
     ctx.save();
     ctx.beginPath();
     ctx.fillStyle = 'red';
-    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.closePath();
     ctx.restore();

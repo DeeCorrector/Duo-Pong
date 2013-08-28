@@ -3,18 +3,18 @@ var animation_timeout = null;
 
 window.onload = function onload () {
   stage = new Stage(document.getElementById('canvas'));
-  var len = 50;
-  var no = 10;
-  for (var i=0; i<no; ++i) {
-    var a = 2 * Math.PI / no * i;
-    stage.add('spin-'+i, new Rectangle({
-      x: 200 + len * Math.cos(a),
-      y: 200 + len * Math.sin(a),
-      w: 30,
-      h: 10,
-      angle: a,
-    }));
-  }
+  // var len = 50;
+  // var no = 10;
+  // for (var i=0; i<no; ++i) {
+  //   var a = 2 * Math.PI / no * i;
+  //   stage.add('spin-'+i, new Rectangle({
+  //     x: 200 + len * Math.cos(a),
+  //     y: 200 + len * Math.sin(a),
+  //     w: 30,
+  //     h: 10,
+  //     angle: a,
+  //   }));
+  // }
 
   stage.
     add(new Rectangle({x:0, y:0, w:600})).
@@ -28,11 +28,12 @@ window.onload = function onload () {
     add(new Rectangle({x:550, y:550, w:500, angle:Math.PI * 2/2})).
     // add(new Rectangle({x:400, y:100, w:150, angle:Math.PI * 5/8})).
     // add('ball', new Circle({x:150, y:150})).
-    add('ray', new Ray({x:350, y:350, angle:Math.PI * 15/8, style:{strokeStyle:'crimson'} })).
+    add(new Polygon({x:300, y:300, radius:150, edges:6, style:{fillStyle:'cyan', lineWidth:10}})).
+    add('ray', new Ray({x:300, y:250, angle:Math.PI * 3/8, style:{strokeStyle:'crimson'} })).
     draw();
 
   var fps_value = 60;
-  fps(fps_value, animate);
+  // fps(fps_value, animate);
 
   window.addEventListener('keydown', function (event) {
     var ray = stage.get('ray');
