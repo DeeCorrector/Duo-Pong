@@ -85,7 +85,7 @@ window.onload = function onload () {
     stage.get('ray').x = event.offsetX;
     stage.get('ray').y = event.offsetY;
   });
-}
+};
 
 function fps (num, callback) {
   clearTimeout(animation_timeout);
@@ -96,8 +96,8 @@ function fps (num, callback) {
 var angle = 0;
 var rotation = 0;
 function animate () {
-  var origin = {x:300, y:300};
-  var length = 100;
+  // var origin = {x:300, y:300};
+  // var length = 100;
   // stage.get('ray').x = origin.x + length * Math.cos(angle);
   // stage.get('ray').y = origin.y + length * Math.sin(angle);
   stage.get('ray').angle = rotation;

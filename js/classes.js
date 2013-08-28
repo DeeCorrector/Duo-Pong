@@ -1,7 +1,7 @@
 
 Point2D.prototype.toObject = function () {
   return {x:this.x, y:this.y};
-}
+};
 
 /**
  * A holder for all the sprites in a canvas
@@ -149,20 +149,21 @@ function Sprite (opt) {
   // extend the options
   if (opt) {
     var exclude = [];
+    var key;
     if ('style' in opt) {
-      for (var key in opt.style) {
+      for (key in opt.style) {
         this.style[key] = opt.style[key];
       }
       exclude.push('style');
     }
-    for (var key in opt) {
+    for (key in opt) {
       if (exclude.indexOf(key) > -1) {
         continue;
       }
       this[key] = opt[key];
     }
   }
-};
+}
 Sprite.prototype = {
   style: {},
   x: 0,
@@ -245,7 +246,7 @@ Sprite.prototype = {
  */
 function Rectangle (opt) {
   Sprite.call(this, opt);
-};
+}
 Rectangle.prototype = {
   __proto__: Sprite.prototype,
   w: 150,
@@ -323,7 +324,7 @@ Ray.prototype = {
   style: {
     fillStyle: '#FF0000',
   },
-  draw: function (stage, render) {
+  draw: function (stage) {
     this.__proto__.__proto__.draw.call(this, stage);
     var ctx = stage.context;
 
@@ -339,15 +340,6 @@ Ray.prototype = {
       };
     };
 
-    var is_point_on_ray = function (ray, point) {
-      return (
-        float_equal(ray.angle, 0.0) || float_equal(ray.angle, Math.PI) ?
-          (ray.angle <= Math.PI ? point.y > ray.y : point.y < ray.y) :
-          (ray.angle <= Math.PI/2 || ray.angle >= Math.PI*3/2 ?
-            point.x > ray.x : point.x < ray.x)
-      );
-    }
-
     var ray = get_ray(this.x, this.y, this.angle);
 
     for (var i=0; i<=this.max_reflections; ++i) {
@@ -357,26 +349,14 @@ Ray.prototype = {
         if (!(line instanceof Rectangle)) {
           continue;
         }
-        var p = Intersection.intersectLineLine(
-          new Point2D(ray.x, ray.y),
-          new Point2D(ray.x + 9000 * ray.dx, ray.y + 9000 * ray.dy),
-          line.points[0],
-          line.points[1]
-        );
-
-        // var p = Intersection.intersectLineRectangle(
-        //   new Point2D(ray.x - 9000 * ray.dx, ray.y - 9000 * ray.dy),
-        //   new Point2D(ray.x + 9000 * ray.dx, ray.y + 9000 * ray.dy),
-        //   line.points[0],
-        //   line.points[1]
-        // );
-
-        // (new Circle({x:line.points[0].x, y:line.points[0].y, style:{fillStyle:'crimson'}, r:3})).draw(stage);
-        // (new Circle({x:line.points[1].x, y:line.points[1].y, style:{fillStyle:'crimson'}, r:3})).draw(stage);
-
         intersections.push({
           line: line,
-          intersection: p
+          intersection: Intersection.intersectLineLine(
+            new Point2D(ray.x, ray.y),
+            new Point2D(ray.x + 9000 * ray.dx, ray.y + 9000 * ray.dy),
+            line.points[0],
+            line.points[1]
+          )
         });
       }
       intersections = intersections.filter(function (data) {
@@ -393,17 +373,16 @@ Ray.prototype = {
             (ray.dx > 0 ? a.x > b.x : a.x < b.x);
       });
       // console.log(intersections.map(function(i){ return JSON.stringify(i.intersection.points[0].toObject(), null, 2); }).join("\n"));
-      if (intersections.length == 0) {
+      if (!intersections.length) {
         console.warn('No more intersections!');
         i = this.max_reflections;
         break;
       }
       var data = intersections[0];
-      var line = data.line;
       var p = data.intersection.points[0];
-      var refl_angle = 2 * line.angle - ray.angle;
+      var refl_angle = 2 * data.line.angle - ray.angle;
 
-      this.draw_normal(stage, {x:p.x, y:p.y, angle:line.normal_angle});
+      this.draw_normal(stage, {x:p.x, y:p.y, angle:data.line.normal_angle});
 
       // Draw reflection ray.
       ctx.save();
@@ -446,7 +425,7 @@ function float_equal (f1, f2, precision) {
 }
 
 function cloneObject (obj) {
-  if(obj == null || typeof(obj) != 'object') {
+  if(obj === null || typeof(obj) != 'object') {
     return obj;
   }
   var temp = obj.constructor();
