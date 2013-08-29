@@ -485,65 +485,98 @@ Ray.prototype = {
   style: {
     fillStyle: '#FF0000',
   },
+
+  /**
+   * Gets all the Sprites on the Stage that intersect with the ray vector in order
+   * with the closest one in intersections[0].
+   *
+   * @param  {Object} ray   For tracing purposes we don't directly use the instance
+   *                          but pass an object which is the current "reflection"
+   *                          of the ray. See
+   * @param  {Stage} stage
+   * @return {Array}        All the intersections sorted.
+   */
+  get_intersections: function (ray, stage) {
+    var intersections = [];
+
+    for (var key in stage.sprites) {
+      var elem = stage.sprites[key];
+      if (!(elem instanceof Rectangle || elem instanceof Polygon)) {
+        continue;
+      }
+      if (elem.intersect) {
+        intersections.push({
+          line: elem,
+          intersection: elem.intersectRay(ray)
+        });
+        continue;
+      }
+      intersections.push({
+        line: elem,
+        intersection: Intersection.intersectLineLine(
+          ray.points[0], ray.points[1],
+          elem.points[0], elem.points[1]
+        )
+      });
+    }
+
+    intersections = intersections.filter(function (data) {
+      return  data.intersection.status == 'Intersection' &&
+              !(float_equal(ray.x, data.intersection.points[0].x) &&
+                float_equal(ray.y, data.intersection.points[0].y));
+    });
+
+    intersections.sort(function (a, b) {
+      a = a.intersection.points[0];
+      b = b.intersection.points[0];
+      return float_equal(a.x, b.x) && float_equal(a.y, b.y) ? 0 :
+        !float_equal(a.y, b.y) ?
+          (ray.dy > 0 ? a.y > b.y : a.y < b.y) :
+          (ray.dx > 0 ? a.x > b.x : a.x < b.x);
+    });
+
+    // console.log(intersections.map(function(i){ return JSON.stringify(i.intersection.points[0].toObject(), null, 2); }).join("\n"));
+
+    return intersections;
+  },
+
+  /**
+   * Gets an object used for recursive ray tracing.
+   * If no arguments are passed the current Ray's state is used.
+   *
+   * @param  {Number} x
+   * @param  {Number} y
+   * @param  {Number} angle
+   * @return {Object}
+   */
+  get_traceable_ray: function (x, y, angle) {
+    if (arguments.length === 0) {
+      x = this.x;
+      y = this.y;
+      angle = this.angle;
+    }
+    angle = angle % (Math.PI * 2);
+    var dx = Math.cos(angle);
+    var dy = Math.sin(angle);
+    return {
+      x:x, y:y, angle:angle, dx:dx, dy:dy,
+      points: [
+        new Point2D(x, y),
+        new Point2D(x + 9000 * dx, y + 9000 * dy),
+      ]
+    };
+  },
+
   draw: function (stage) {
     this.super.draw.call(this, stage);
     var ctx = stage.context;
 
     ctx.save();
-    var get_ray = function (x, y, angle) {
-      angle = angle % (Math.PI * 2);
-      var dx = Math.cos(angle);
-      var dy = Math.sin(angle);
-      return {
-        x:x, y:y, angle:angle, dx:dx, dy:dy,
-        points: [
-          new Point2D(x, y),
-          new Point2D(x + 9000 * dx, y + 9000 * dy),
-        ]
-      };
-    };
-
-    var ray = get_ray(this.x, this.y, this.angle);
-
+    var ray = this.get_traceable_ray();
     for (var i=0; i<=this.max_reflections; ++i) {
-      var intersections = [];
-      for (var key in stage.sprites) {
-        var elem = stage.sprites[key];
-        if (!(elem instanceof Rectangle || elem instanceof Polygon)) {
-          continue;
-        }
-        if (elem.intersect) {
-          intersections.push({
-            line: elem,
-            intersection: elem.intersectRay(ray)
-          });
-          continue;
-        }
-        intersections.push({
-          line: elem,
-          intersection: Intersection.intersectLineLine(
-            ray.points[0], ray.points[1],
-            elem.points[0], elem.points[1]
-          )
-        });
-      }
-      intersections = intersections.filter(function (data) {
-        return  data.intersection.status == 'Intersection' &&
-                !(float_equal(ray.x, data.intersection.points[0].x) &&
-                  float_equal(ray.y, data.intersection.points[0].y));
-      });
-      intersections.sort(function (a, b) {
-        a = a.intersection.points[0];
-        b = b.intersection.points[0];
-        return float_equal(a.x, b.x) && float_equal(a.y, b.y) ? 0 :
-          !float_equal(a.y, b.y) ?
-            (ray.dy > 0 ? a.y > b.y : a.y < b.y) :
-            (ray.dx > 0 ? a.x > b.x : a.x < b.x);
-      });
-      // console.log(intersections.map(function(i){ return JSON.stringify(i.intersection.points[0].toObject(), null, 2); }).join("\n"));
+      var intersections = this.get_intersections(ray, stage);
       if (!intersections.length) {
         console.warn('No more intersections!');
-        i = this.max_reflections;
         break;
       }
       var data = intersections[0];
@@ -572,7 +605,7 @@ Ray.prototype = {
       ctx.closePath();
       ctx.restore();
 
-      ray = get_ray(p.x, p.y, refl_angle);
+      ray = this.get_traceable_ray(p.x, p.y, refl_angle);
       this.draw_normal(stage, {x:ray.x, y:ray.y, angle:ray.angle, color:'#0000ff'});
     }
     ctx.restore();
