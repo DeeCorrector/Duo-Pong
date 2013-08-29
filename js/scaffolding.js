@@ -16,19 +16,23 @@ window.onload = function onload () {
   //   }));
   // }
 
+  var w = stage.width;
+  var h = stage.height;
+  var o1 = 50;
+
   stage.
-    add(new Rectangle({x:0, y:0, w:600})).
-    add(new Rectangle({x:0, y:600, w:600, angle:Math.PI * 3/2})).
-    add(new Rectangle({x:600, y:0, w:600, angle:Math.PI * 1/2})).
-    add(new Rectangle({x:600, y:600, w:600, angle:Math.PI * 2/2})).
+    add(new Rectangle({x:0, y:0, w:w, h:2,})).
+    add(new Rectangle({x:0, y:h, w:w, h:2, angle:Math.PI * 3/2})).
+    add(new Rectangle({x:w, y:0, w:w, h:2, angle:Math.PI * 1/2})).
+    add(new Rectangle({x:w, y:h, w:w, h:2, angle:Math.PI * 2/2})).
     grid(50).
-    add(new Rectangle({x:50, y:50, w:500})).
-    add(new Rectangle({x:50, y:550, w:500, angle:Math.PI * 3/2})).
-    add(new Rectangle({x:550, y:50, w:500, angle:Math.PI * 1/2})).
-    add(new Rectangle({x:550, y:550, w:500, angle:Math.PI * 2/2})).
-    // add(new Rectangle({x:400, y:100, w:150, angle:Math.PI * 5/8})).
+    add(new Rectangle({x:o1, y:o1, w:w-2*o1})).
+    add(new Rectangle({x:o1, y:h-o1, w:h-2*o1, angle:Math.PI * 3/2})).
+    add(new Rectangle({x:w-o1, y:o1, w:h-2*o1, angle:Math.PI * 1/2})).
+    add(new Rectangle({x:w-o1, y:h-o1, w:w-2*o1, angle:Math.PI * 2/2})).
+    add(new Rectangle({x:400, y:100, w:150, angle:Math.PI * 5/8})).
     // add('ball', new Circle({x:150, y:150})).
-    add(new Polygon({x:300, y:300, radius:150, edges:6, style:{fillStyle:'cyan', lineWidth:10}})).
+    // add(new Polygon({x:300, y:300, radius:150, edges:6, style:{fillStyle:'cyan', lineWidth:10}})).
     add('ray', new Ray({x:300, y:250, angle:Math.PI * 3/8, style:{strokeStyle:'crimson'} })).
     draw();
 

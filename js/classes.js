@@ -18,8 +18,12 @@ Stage.prototype = {
   _grid: {
     x: 25,
     y: 25,
+    emphasize: 100,
+    labels: true,
     style: {
-      strokeStyle: '#ccc'
+      fillStyle: '#666',
+      strokeStyle: '#ccc',
+      font: '11px Courier New',
     }
   },
   // Unnamed sprites get an index as a name.
@@ -119,21 +123,31 @@ Stage.prototype = {
    */
   _drawGrid: function (size) {
     size = size || this._grid;
-    this.context.save();
+    var ctx = this.context;
+    ctx.save();
     this.applyStyle(this._grid.style);
-    this.context.beginPath();
+    ctx.beginPath();
+    var pos;
     for (var x=size.x; x<this.width; x+=size.x) {
-      this.context.moveTo(x + 0.5, 0);
-      this.context.lineTo(x + 0.5, this.height);
-      this.context.stroke();
+      pos = x + (this._grid.emphasize && x % this._grid.emphasize === 0 ? 0 : 0.5);
+      ctx.moveTo(pos, 0);
+      ctx.lineTo(pos, this.height);
+      ctx.stroke();
+      if (this._grid.labels) {
+        ctx.fillText(x, x + 2, 13);
+      }
     }
     for (var y=size.y; y<this.height; y+=size.y) {
-      this.context.moveTo(0, y + 0.5);
-      this.context.lineTo(this.width, y + 0.5);
-      this.context.stroke();
+      pos = y + (this._grid.emphasize && y % this._grid.emphasize === 0 ? 0 : 0.5);
+      ctx.moveTo(0, pos);
+      ctx.lineTo(this.width, pos);
+      ctx.stroke();
+      if (this._grid.labels) {
+        ctx.fillText(y, 4, y - 2);
+      }
     }
-    this.context.closePath();
-    this.context.restore();
+    ctx.closePath();
+    ctx.restore();
   }
 };
 
